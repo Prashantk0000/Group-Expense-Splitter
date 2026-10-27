@@ -62,9 +62,6 @@ Finished: login and registration, group creation, registered-user invitations, e
 
 With more time I would add activity-feed entries, push/email reminders for unsettled payments, and deployment configuration with HTTPS.
 
-## AI tools
-
-OpenCode (GPT-6 Astra) was used to implement the full-stack application, including the SQLite data model, settlement algorithm, validation, tests, seed data, and responsive UI. The accounting rules and resulting behavior were reviewed manually.
 
 ## Environment
 

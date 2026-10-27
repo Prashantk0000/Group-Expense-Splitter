@@ -1,6 +1,6 @@
-# Ledgerly — Personal Budget Tracker
+# Splitwise — Group Expense Splitter
 
-Ledgerly is a full-stack personal finance app for recording income, expenses, and account-to-account transfers. It shows a monthly overview, category spending, six months of trends, and budget warnings before a category runs out.
+A full-stack group expense app for creating groups, adding registered members, recording shared expenses, and settling balances with as few payments as possible.
 
 ## Run locally
 
@@ -16,32 +16,37 @@ Open <http://127.0.0.1:8000>.
 PowerShell configuration:
 
 ```powershell
-$env:BUDGET_DB=".\data\local.db"
+$env:EXPENSE_DB=".\data\local.db"
 $env:PORT="8001"
 python server.py
 ```
 
-### Demo login
+### Demo logins
 
-| Email | Password |
+All demo users use password `demo123`:
+
+| Name | Email |
 | --- | --- |
-| maya@demo.com | demo123 |
+| Maya Kapoor | maya@demo.com |
+| Arjun Mehta | arjun@demo.com |
+| Zoya Khan | zoya@demo.com |
 
-The seed script creates three accounts, sample transactions, and current-month budgets. It is safe to run again.
+The seed creates Maya's **Goa Weekend** group with two expenses. It is safe to run again.
 
 ## Data model and design decisions
 
-SQLite stores `users`, `accounts`, `categories`, `transactions`, and `budgets`. Money is stored as integer paise to avoid floating-point errors. A transaction has one of three kinds:
+SQLite stores every amount as integer paise. The main tables are:
 
-- `income`: adds to its account
-- `expense`: subtracts from its account and a category budget
-- `transfer`: subtracts from the source account and adds to the destination account, without entering income or expense totals
+- `users`: registered accounts used for group invitations.
+- `groups` and `group_members`: group ownership and membership.
+- `expenses` and `expense_shares`: the payer, total, split mode, and one exact share per member.
+- `payments`: recorded settlements between two group members.
 
-Account balances are derived from the opening balance plus the ledger every time they are requested. This means edits, deletes, and transfers cannot leave a stale balance behind. Imported rows receive a deterministic hash with a database uniqueness constraint, so re-importing the same file skips duplicates.
+Equal splits use integer division and distribute leftover paise deterministically. Exact splits must sum to the total. Percentage splits must sum to 100%; they round down each share and assign the remaining paise to the final member. This guarantees that shares always equal the expense total.
 
-CSV import is a two-step flow: inspect/map columns, then preview rows. Each row is validated independently and bad dates, missing amounts, unknown accounts, and duplicates are reported without stopping valid rows from being imported.
+A member's net balance is `what they paid + payments received - their expense shares - payments made`. Positive balances are owed money; negative balances owe money. Settlement uses a depth-first cancellation search for groups up to 12 members to minimize payment count, with a correct greedy fallback for unusually large groups.
 
-The backend is a small standard-library `http.server` JSON API. The frontend is a responsive static application in `web/` and works on phone and laptop layouts.
+The backend is a small standard-library `http.server` JSON API. Every write is validated server-side, and API errors are shown in the UI. The responsive frontend works on phone and laptop layouts.
 
 ## Tests
 
@@ -49,18 +54,18 @@ The backend is a small standard-library `http.server` JSON API. The frontend is 
 python -m unittest discover -s tests -v
 ```
 
-The tests cover paise parsing, opening balances, ledger calculations, both sides of transfers, date/month/type validation, and 80%/100% budget warnings.
+The tests cover paise parsing, equal split remainders, exact and percentage validation, balance calculations, recorded payments, date validation, and minimum-payment settlement behavior.
 
 ## Finished and next steps
 
-Finished: authentication, accounts, income/expense/transfer ledger, edits and deletes, monthly budgets with 80% and 100% warnings, category and six-month dashboards, CSV preview/mapping/import with row-level errors and deduplication, monthly CSV export, seed data, tests, and responsive UI.
+Finished: login and registration, group creation, registered-user invitations, equal/exact/percentage expenses, edit/delete, per-member net balances, minimum-payment settle-up plans, recorded payments, seed demo data, automated tests, and responsive UI.
 
-With more time I would add recurring transaction rules, password reset, persistent sessions, and deployment configuration with HTTPS.
+With more time I would add activity-feed entries, push/email reminders for unsettled payments, and deployment configuration with HTTPS.
 
 ## AI tools
 
-OpenCode (GPT-6 Astra) was used to scaffold the full-stack implementation, write the accounting logic and automated tests, and review the responsive UI. The data model, validation rules, and ledger behavior were manually checked.
+OpenCode (GPT-6 Astra) was used to implement the full-stack application, including the SQLite data model, settlement algorithm, validation, tests, seed data, and responsive UI. The accounting rules and resulting behavior were reviewed manually.
 
 ## Environment
 
-Copy `.env.example` when deploying or customizing local settings. Never commit secrets.
+Copy `.env.example` when customizing local settings. Never commit secrets.
